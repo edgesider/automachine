@@ -7,5 +7,6 @@ Implementation of several automachine.
 
 # TODO
 
+- Regular expression
 - Pushdown automachine
 - Turing automachine
