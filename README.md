@@ -7,6 +7,7 @@ Implementation of several automachine.
 
 # TODO
 
+- NFA to .gv file
 - Regular expression
 - Pushdown automachine
 - Turing automachine

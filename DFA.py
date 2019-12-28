@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # {C, Q, F, S, E}
 # C: 接受符号
 # Q: 状态

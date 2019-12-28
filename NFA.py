@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # {C, Q, F, S, E}
 # C: 接受符号
 # Q: 状态
@@ -27,11 +25,11 @@ class NFA:
             assert c in self.chars
             new_qs = self.f(qs, c)
             qs = new_qs
-        for e in self.end:
-            if e in qs:
-                return True
+        if self.is_end(qs):
+            return True
 
     def to_dfa(self):
+        """convert this NFA to DFA"""
         dfa_q = [(self.start,)]
         dfa_f = {}
         dfa_s = (self.start,)
@@ -41,14 +39,17 @@ class NFA:
                 new_qs = tuple(self.f(qs, c))
                 if not new_qs:
                     continue
+
+                # add new state
                 if new_qs not in dfa_q:
                     dfa_q.append(new_qs)
+                # add new function
                 if qs not in dfa_f:
                     dfa_f[qs] = {}
                 dfa_f[qs][c] = new_qs
-                for e in self.end:
-                    if e in new_qs:
-                        dfa_e.append(new_qs)
+                # add ending state
+                if self.is_end(new_qs):
+                    dfa_e.append(new_qs)
         return DFA(self.chars, dfa_q, dfa_f, dfa_s, dfa_e)
 
     def f(self, qs, c):
@@ -56,6 +57,8 @@ class NFA:
         return self.e_loop(self.step(self.e_loop(qs), c))
 
     def step(self, qs, c):
+        """step forward with character `c` in state `qs`,
+        return the new state set"""
         new_qs = set()
         for q in qs:
             try:
@@ -65,7 +68,7 @@ class NFA:
         return new_qs
 
     def e_loop(self, qs):
-        # copy
+        """step with epsilon until there is no changes"""
         qs = {q for q in qs}
         while True:
             new_qs = self.step(qs, self.epsilon)
@@ -74,9 +77,16 @@ class NFA:
             qs.update(new_qs)
         return qs
 
+    def is_end(self, qs):
+        """check if `qs` is a ending state"""
+        for e in self.end:
+            if e in qs:
+                return True
+        return False
+
 
 def main():
-    # starts and ends with the same char
+    # NFA: starts and ends with the same char
     # (0(0|1)*0 | 1(0|1)*1)
     C = '01'
     Q = ['q0', 'q1', 'q2', 'q3']
@@ -106,6 +116,7 @@ def main():
 
 
 def test_e_closeure():
+    # e-NFA: no meaning, just test
     C = '01'
     Q = ['q0', 'q1', 'q2', 'q3', 'q4']
     F = {
