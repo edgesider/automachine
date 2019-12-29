@@ -122,7 +122,7 @@ class NFA:
             raise Exception(f'state `{old}` not exist')
         if new in self.q:
             raise Exception(f'state number `{new}` in use')
-        
+
         # f = {
         #   0: {
         #     'a': [0, 1],
@@ -221,7 +221,7 @@ def test_nfa():
     assert dfa.run('11') is True
     assert dfa.run('00') is True
     assert dfa.run('00101011010') is True
-    assert dfa.run('10') == False
+    assert dfa.run('10') is False
     assert dfa.run('0001011101') is False
 
 
@@ -251,50 +251,6 @@ def test_e_closure():
     assert nfa.f({0}, '1') == {3, 4}
 
 
-def test_kleene_closure():
-    C = '01'
-    Q  = [0, 1]
-    F = {
-        0: {
-            '0': [1]
-        }
-    }
-    S = 0
-    E = [1]
-    nfa = NFA(C, Q, F, S, E)
-    nfa.kleene_closure()
-    # __import__('pprint').pprint(nfa.function)
-    # __import__('pprint').pprint(nfa.start)
-    # __import__('pprint').pprint(nfa.end)
-
-    # NFA: starts and ends with different characters
-    # (0(0|1)*1 | 1(0|1)*0)
-    C = '01'
-    Q = [0, 1, 2, 3]
-    F = {
-        0: {
-            '0': [1],
-            '1': [2],
-        },
-        1: {
-            '1': [1, 3],
-            '0': [1],
-        },
-        2: {
-            '1': [2],
-            '0': [2, 3],
-        }
-    }
-    S = 0
-    E = [3]
-
-    nfa = NFA(C, Q, F, S, E)
-    nfa.kleene_closure()
-    assert nfa.run('1001') is True
-    assert nfa.run('1111') is False
-    assert nfa.run('1010') is True
-
-
 def test_unit_end_state():
     C = '01'
     Q = [0, 1, 2, 3]
@@ -319,6 +275,22 @@ def test_unit_end_state():
     nfa.unit_end_state()
     assert len(nfa.end) == 1
     assert len(nfa.q) == 5
+
+    C = '01'
+    Q = [0, 1]
+    F = {
+        0: {
+            '0': [1],
+            '1': [0]
+        }
+    }
+    S = 0
+    E = [1]
+    nfa = NFA(C, Q, F, S, E)
+    nfa.unit_end_state()
+    assert nfa.start == 0
+    assert nfa.end == [1]
+    assert nfa.q == [0, 1]
 
 
 def test_rename_state():
@@ -396,6 +368,28 @@ def test_arrange_state():
         }
     }
 
+    C = '01'
+    Q = [0, 1]
+    F = {
+        0: {
+            '0': [1],
+            '1': [0, 1],
+        }
+    }
+    S = 0
+    E = [1]
+    nfa = NFA(C, Q, F, S, E)
+    nfa.arrange_state(1)
+    assert sorted(nfa.q) == [1, 2]
+    assert nfa.start == 1
+    assert sorted(nfa.end) == [2]
+    assert nfa.function == {
+        1: {
+            '0': [2],
+            '1': [1, 2],
+        }
+    }
+
 
 def test_append():
     C = '01'
@@ -408,7 +402,7 @@ def test_append():
     S = 0
     E = [1]
     nfa1 = NFA(C, Q, F, S, E)
-    
+
     C = '01'
     Q = [0, 1]
     F = {
@@ -422,6 +416,61 @@ def test_append():
 
     nfa1.append(nfa2)
     assert nfa1.run('01') is True
+
+
+def test_kleene_closure():
+    C = '01'
+    Q = [0, 1]
+    F = {
+        0: {
+            '0': [1]
+        }
+    }
+    S = 0
+    E = [1]
+    nfa = NFA(C, Q, F, S, E)
+    nfa.kleene_closure()
+    assert nfa.start == 2
+    assert nfa.end == [3]
+    assert nfa.function == {
+        2: {
+            ...: [0, 3]
+        },
+        1: {
+            ...: [0, 3]
+        },
+        0: {
+            '0': [1]
+        }
+    }
+
+    # NFA: starts and ends with different characters
+    # (0(0|1)*1 | 1(0|1)*0)
+    C = '01'
+    Q = [0, 1, 2, 3]
+    F = {
+        0: {
+            '0': [1],
+            '1': [2],
+        },
+        1: {
+            '1': [1, 3],
+            '0': [1],
+        },
+        2: {
+            '1': [2],
+            '0': [2, 3],
+        }
+    }
+    S = 0
+    E = [3]
+
+    nfa = NFA(C, Q, F, S, E)
+    nfa.kleene_closure()
+    assert nfa.run('1001') is True
+    assert nfa.run('10101010') is True
+    assert nfa.run('1111') is False
+    assert nfa.run('1010') is True
 
 
 if __name__ == '__main__':
