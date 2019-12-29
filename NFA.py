@@ -16,8 +16,8 @@ class NFA:
         self.chars = chars
         self.q = q
         self.function = function
-        self.start = start
-        self.end = end
+        self.start = list(start)
+        self.end = list(end)
 
     def run(self, input):
         qs = (self.start, )
@@ -84,30 +84,79 @@ class NFA:
                 return True
         return False
 
+    def add_transfer(self, q, c, newq):
+        """add new transfer"""
+        # TODO
+        pass
+
+    def unit_end_state(self):
+        """make end state single"""
+        # TODO
+        pass
+
+    def rename_state(self, old, new):
+        """rename state `old` to `new`"""
+        # TODO
+        pass
+
+    def arrange_state(self, start=0):
+        """arrange state number from `start`"""
+        # TODO
+        pass
+
+    def do_kleene_closeure(self):
+        """apply kleene closeure on self."""
+
+        self.unit_end_state()
+
+        # find two available state number
+        maxq = max(self.q)
+        qstart = maxq + 1
+        qend = maxq + 2
+
+        # new start state
+        self.function[qstart] = { ...: [self.start, qend] }
+
+        # new end state
+        # we called unit_end_state() before,
+        # now we only have one end state.
+        self.add_transfer(self.end[0], ..., self.start)
+
+        self.start = qstart
+        self.end = [qend]
+
+    def do_append(self, nfa: NFA):
+        """append another NFA `nfa` to self."""
+        self.unit_end_state()
+        self.arrange_state(0)
+        nfa.arrange_state(len(self.q))
+
+        self.function.update(nfa.function)
+        self.add_transfer(self.end[0], ..., nfa.start)
+        self.end = nfa.end[:]
+
 
 def main():
     # NFA: starts and ends with the same char
     # (0(0|1)*0 | 1(0|1)*1)
     C = '01'
-    Q = ['q0', 'q1', 'q2', 'q3']
+    Q = [0, 1, 2, 3]
     F = {
-        'q0': {
-            '0': ['q1'],
-            '1': ['q2'],
-            ...: ['q1', 'q3']
+        0: {
+            '0': [1],
+            '1': [2],
         },
-        'q1': {
-            '0': ['q1', 'q3'],
-            '1': ['q1'],
+        1: {
+            '0': [1, 3],
+            '1': [1],
         },
-        'q2': {
-            '0': ['q2'],
-            '1': ['q2', 'q3'],
-            ...: ['q1', 'q3']
+        2: {
+            '0': [2],
+            '1': [2, 3],
         }
     }
-    S = 'q0'
-    E = ['q3']
+    S = 0
+    E = [3]
 
     nfa = NFA(C, Q, F, S, E)
     print('Accepted!' if nfa.run('11001111001') else 'Not Accepted!')
@@ -118,29 +167,79 @@ def main():
 def test_e_closeure():
     # e-NFA: no meaning, just test
     C = '01'
-    Q = ['q0', 'q1', 'q2', 'q3', 'q4']
+    Q = [0, 1, 2, 3, 4]
     F = {
-        'q0': {
-            ...: ['q1']
+        0: {
+            ...: [1]
         },
-        'q1': {
-            ...: ['q2']
+        1: {
+            ...: [2]
         },
-        'q2': {
-            'q1': ['q3']
+        2: {
+            '1': [3]
         },
-        'q3': {
-            ...: ['q4']
+        3: {
+            ...: [4]
         }
     }
-    S = 'q0'
-    E = ['q1']
+    S = 0
+    E = [1]
     nfa = NFA(C, Q, F, S, E)
-    assert nfa.step({'q0'}, ...) == {'q1'}
-    assert nfa.e_loop({'q0'}) == {'q0', 'q1', 'q2'}
-    assert nfa.f({'q0'}, 'q1') == {'q3', 'q4'}
+    assert nfa.step({0}, ...) == {1}
+    assert nfa.e_loop({0}) == {0, 1, 2}
+    assert nfa.f({0}, '1') == {3, 4}
+
+
+def test_kleene_closeure():
+    C = '01'
+    Q  = [0, 1]
+    F = {
+        0: {
+            '0': 1
+        }
+    }
+    S = 0
+    E = [1]
+    nfa = NFA(C, Q, F, S, E)
+    nfa.do_kleene_closeure()
+    __import__('pprint').pprint(nfa.function)
+    __import__('pprint').pprint(nfa.start)
+    __import__('pprint').pprint(nfa.end)
+
+    # NFA: starts and ends with the same char
+    # (0(0|1)*0 | 1(0|1)*1)
+    C = '01'
+    Q = [0, 1, 2, 3]
+    F = {
+        0: {
+            '0': [1],
+            '1': [2],
+        },
+        1: {
+            '1': [1, 3],
+            '0': [1],
+        },
+        2: {
+            '1': [2],
+            '0': [2, 3],
+        }
+    }
+    S = 0
+    E = [3]
+
+    nfa = NFA(C, Q, F, S, E)
+    nfa.do_kleene_closeure()
+    print('Accepted!' if nfa.run('1001') else 'Not Accepted!')
+    dfa = nfa.to_dfa()
+    print('Accepted!' if dfa.run('11') else 'Not Accepted!')
+
+
+def test_append():
+    # TODO
+    pass
 
 
 if __name__ == '__main__':
-    main()
-    test_e_closeure()
+    # main()
+    # test_e_closeure()
+    test_kleene_closeure()
