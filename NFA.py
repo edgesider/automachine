@@ -21,10 +21,14 @@ class NFA:
 
     def run(self, input_str):
         qs = (self.start,)
-        for c in input_str:
-            assert c in self.chars
-            new_qs = self.f(qs, c)
-            qs = new_qs
+        if input_str != '':
+            for c in input_str:
+                assert c in self.chars
+                new_qs = self.f(qs, c)
+                qs = new_qs
+        else:
+            # if input is empty, we need to do a epsilon step
+            qs = self.e_loop(qs)
         if self.is_end(qs):
             return True
         else:
@@ -224,9 +228,9 @@ class NFA:
 def test_nfa():
     # NFA: starts and ends with the same char
     # (0(0|1)*0 | 1(0|1)*1)
-    C = '01'
-    Q = [0, 1, 2, 3]
-    F = {
+    c = '01'
+    q = [0, 1, 2, 3]
+    f = {
         0: {
             '0': [1],
             '1': [2],
@@ -240,10 +244,10 @@ def test_nfa():
             '1': [2, 3],
         }
     }
-    S = 0
-    E = [3]
+    s = 0
+    e = [3]
 
-    nfa = NFA(C, Q, F, S, E)
+    nfa = NFA(c, q, f, s, e)
     assert nfa.run('11') is True
     assert nfa.run('00') is True
     assert nfa.run('00101011010') is True
@@ -256,12 +260,24 @@ def test_nfa():
     assert dfa.run('10') is False
     assert dfa.run('0001011101') is False
 
+    c = '01'
+    q = [0, 1]
+    f = {
+        0: {
+            ...: [1]
+        }
+    }
+    s = 0
+    e = [1]
+    nfa = NFA(c, q, f, s, e)
+    assert nfa.run('') is True
+
 
 def test_e_closure():
     # e-NFA: no meaning, just test
-    C = '01'
-    Q = [0, 1, 2, 3, 4]
-    F = {
+    c = '01'
+    q = [0, 1, 2, 3, 4]
+    f = {
         0: {
             ...: [1]
         },
@@ -275,18 +291,18 @@ def test_e_closure():
             ...: [4]
         }
     }
-    S = 0
-    E = [1]
-    nfa = NFA(C, Q, F, S, E)
+    s = 0
+    e = [1]
+    nfa = NFA(c, q, f, s, e)
     assert nfa.step({0}, ...) == {1}
     assert nfa.e_loop({0}) == {0, 1, 2}
     assert nfa.f({0}, '1') == {3, 4}
 
 
 def test_unit_end_state():
-    C = '01'
-    Q = [0, 1, 2, 3]
-    F = {
+    c = '01'
+    q = [0, 1, 2, 3]
+    f = {
         0: {
             '0': [1],
             '1': [2],
@@ -300,25 +316,25 @@ def test_unit_end_state():
             '0': [2, 3],
         }
     }
-    S = 0
-    E = [0, 1, 2, 3]
+    s = 0
+    e = [0, 1, 2, 3]
 
-    nfa = NFA(C, Q, F, S, E)
+    nfa = NFA(c, q, f, s, e)
     nfa.unit_end_state()
     assert len(nfa.end) == 1
     assert len(nfa.states) == 5
 
-    C = '01'
-    Q = [0, 1]
-    F = {
+    c = '01'
+    q = [0, 1]
+    f = {
         0: {
             '0': [1],
             '1': [0]
         }
     }
-    S = 0
-    E = [1]
-    nfa = NFA(C, Q, F, S, E)
+    s = 0
+    e = [1]
+    nfa = NFA(c, q, f, s, e)
     nfa.unit_end_state()
     assert nfa.start == 0
     assert nfa.end == [1]
@@ -326,9 +342,9 @@ def test_unit_end_state():
 
 
 def test_rename_state():
-    C = '01'
-    Q = [0, 1, 2]
-    F = {
+    c = '01'
+    q = [0, 1, 2]
+    f = {
         0: {
             '0': [0],
             '1': [0],
@@ -338,10 +354,10 @@ def test_rename_state():
             '0': [2],
         }
     }
-    S = 0
-    E = [0, 2]
+    s = 0
+    e = [0, 2]
 
-    nfa = NFA(C, Q, F, S, E)
+    nfa = NFA(c, q, f, s, e)
     nfa.rename_state(0, 8)
     assert nfa.start == 8
     assert nfa.end == [8, 2]
@@ -369,9 +385,9 @@ def test_rename_state():
 
 
 def test_arrange_state():
-    C = '01'
-    Q = [2, 9, 4]
-    F = {
+    c = '01'
+    q = [2, 9, 4]
+    f = {
         2: {
             '0': [2],
             '1': [9],
@@ -381,10 +397,10 @@ def test_arrange_state():
             '0': [2],
         }
     }
-    S = 2
-    E = [9, 4]
+    s = 2
+    e = [9, 4]
 
-    nfa = NFA(C, Q, F, S, E)
+    nfa = NFA(c, q, f, s, e)
     nfa.arrange_state()
     assert sorted(nfa.states) == [0, 1, 2]
     assert nfa.start == 0
@@ -400,17 +416,17 @@ def test_arrange_state():
         }
     }
 
-    C = '01'
-    Q = [0, 1]
-    F = {
+    c = '01'
+    q = [0, 1]
+    f = {
         0: {
             '0': [1],
             '1': [0, 1],
         }
     }
-    S = 0
-    E = [1]
-    nfa = NFA(C, Q, F, S, E)
+    s = 0
+    e = [1]
+    nfa = NFA(c, q, f, s, e)
     nfa.arrange_state(1)
     assert sorted(nfa.states) == [1, 2]
     assert nfa.start == 1
@@ -424,43 +440,43 @@ def test_arrange_state():
 
 
 def test_concatenate():
-    C = '01'
-    Q = [0, 1]
-    F = {
+    c = '01'
+    q = [0, 1]
+    f = {
         0: {
             '0': [1]
         }
     }
-    S = 0
-    E = [1]
-    nfa1 = NFA(C, Q, F, S, E)
+    s = 0
+    e = [1]
+    nfa1 = NFA(c, q, f, s, e)
 
-    C = '01'
-    Q = [0, 1]
-    F = {
+    c = '01'
+    q = [0, 1]
+    f = {
         0: {
             '1': [1]
         }
     }
-    S = 0
-    E = [1]
-    nfa2 = NFA(C, Q, F, S, E)
+    s = 0
+    e = [1]
+    nfa2 = NFA(c, q, f, s, e)
 
     nfa1.concatenate(nfa2)
     assert nfa1.run('01') is True
 
 
 def test_kleene_closure():
-    C = '01'
-    Q = [0, 1]
-    F = {
+    c = '01'
+    q = [0, 1]
+    f = {
         0: {
             '0': [1]
         }
     }
-    S = 0
-    E = [1]
-    nfa = NFA(C, Q, F, S, E)
+    s = 0
+    e = [1]
+    nfa = NFA(c, q, f, s, e)
     nfa.kleene_closure()
     assert nfa.start == 2
     assert nfa.end == [3]
@@ -478,9 +494,9 @@ def test_kleene_closure():
 
     # NFA: starts and ends with different characters
     # (0(0|1)*1 | 1(0|1)*0)
-    C = '01'
-    Q = [0, 1, 2, 3]
-    F = {
+    c = '01'
+    q = [0, 1, 2, 3]
+    f = {
         0: {
             '0': [1],
             '1': [2],
@@ -494,10 +510,10 @@ def test_kleene_closure():
             '0': [2, 3],
         }
     }
-    S = 0
-    E = [3]
+    s = 0
+    e = [3]
 
-    nfa = NFA(C, Q, F, S, E)
+    nfa = NFA(c, q, f, s, e)
     nfa.kleene_closure()
     assert nfa.run('1001') is True
     assert nfa.run('10101010') is True
@@ -506,27 +522,27 @@ def test_kleene_closure():
 
 
 def test_alternate():
-    C = '01'
-    Q = [0, 1]
-    F = {
+    c = '01'
+    q = [0, 1]
+    f = {
         0: {
             '0': [1]
         }
     }
-    S = 0
-    E = [1]
-    nfa1 = NFA(C, Q, F, S, E)
+    s = 0
+    e = [1]
+    nfa1 = NFA(c, q, f, s, e)
 
-    C = '01'
-    Q = [0, 1]
-    F = {
+    c = '01'
+    q = [0, 1]
+    f = {
         0: {
             '1': [1]
         }
     }
-    S = 0
-    E = [1]
-    nfa2 = NFA(C, Q, F, S, E)
+    s = 0
+    e = [1]
+    nfa2 = NFA(c, q, f, s, e)
 
     # 0*
     nfa1.kleene_closure()
