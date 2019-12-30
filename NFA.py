@@ -10,19 +10,18 @@ from DFA import DFA
 
 
 class NFA:
-
     epsilon = ...
 
-    def __init__(self, chars, q, function, start, end):
+    def __init__(self, chars, states, function, start, end):
         self.chars = chars
-        self.q = q
+        self.states = states
         self.function = function
         self.start = start
         self.end = list(end)
 
-    def run(self, input):
-        qs = (self.start, )
-        for c in input:
+    def run(self, input_str):
+        qs = (self.start,)
+        for c in input_str:
             assert c in self.chars
             new_qs = self.f(qs, c)
             qs = new_qs
@@ -87,6 +86,10 @@ class NFA:
                 return True
         return False
 
+    def transfer_list(self):
+        """get all transfers in three-tuple form"""
+        return [(q, c, nextq) for q, t in self.function.items() for c, qs in t.items() for nextq in qs]
+
     def add_transfer(self, q, c, newq):
         """add new transfer
         :params q: previous state
@@ -95,32 +98,36 @@ class NFA:
 
         `newq` could be a single state or a list of state
         """
-        assert c == ... or c in self.chars
+        assert q in self.states
+        assert c is ... or c in self.chars
         t = self.function.get(q)
         if t is None:
             t = self.function[q] = {c: []}
         elif t.get(c) is None:
             t[c] = []
         if isinstance(newq, list):
+            for _q in newq:
+                assert _q in self.states
             t[c].extend(newq)
         else:
+            assert newq in self.states
             t[c].append(newq)
 
     def unit_end_state(self):
         """make end state single"""
         if len(self.end) == 1:
             return
-        new_end = max(self.q) + 1
+        new_end = max(self.states) + 1
+        self.states.append(new_end)
         for e in self.end:
             self.add_transfer(e, ..., new_end)
         self.end = [new_end]
-        self.q.append(new_end)
 
     def rename_state(self, old, new):
         """rename state `old` to `new`"""
-        if old not in self.q:
+        if old not in self.states:
             raise Exception(f'state `{old}` not exist')
-        if new in self.q:
+        if new in self.states:
             raise Exception(f'state number `{new}` in use')
 
         # f = {
@@ -130,29 +137,30 @@ class NFA:
         #   }
         # }
         f = self.function
-        newf = {}
+        new_f = {}
         for q, t in f.items():
             for c, qs in t.items():
                 newqs = [q if q != old else new for q in qs]
                 t[c] = newqs
 
             if q == old:
-                newf[new] = f[q]
+                new_f[new] = f[q]
             else:
-                newf[q] = f[q]
+                new_f[q] = f[q]
         del f
-        self.function = newf
-        self.q = [q if q != old else new for q in self.q]
+        self.function = new_f
+        self.states = [q if q != old else new for q in self.states]
         self.end = [q if q != old else new for q in self.end]
         if old == self.start:
             self.start = new
 
     def arrange_state(self, start=0):
         """arrange state number start from `start`"""
-        max_q = max(self.q)
-        for i, e in enumerate(self.q):
+        # avoid conflicts
+        max_q = max(self.states)
+        for i, e in enumerate(self.states):
             self.rename_state(e, i + max_q + start + 1)
-        for i, e in enumerate(self.q):
+        for i, e in enumerate(self.states):
             self.rename_state(e, i + start)
 
     def kleene_closure(self):
@@ -161,32 +169,56 @@ class NFA:
         self.unit_end_state()
 
         # find two available state number
-        maxq = max(self.q)
-        qstart = maxq + 1
-        qend = maxq + 2
+        maxq = max(self.states)
+        start = maxq + 1
+        end = maxq + 2
+
+        self.states.extend([start, end])
 
         # new start state
-        self.add_transfer(qstart, ..., [self.start, qend])
+        self.add_transfer(start, ..., [self.start, end])
 
         # new end state
         # we called unit_end_state() before,
         # now we only have one end state.
-        self.add_transfer(self.end[0], ..., [self.start, qend])
+        self.add_transfer(self.end[0], ..., [self.start, end])
 
-        self.start = qstart
-        self.end = [qend]
+        self.start = start
+        self.end = [end]
 
-    def append(self, nfa):
-        """append another NFA `nfa` to self."""
+    def concatenate(self, nfa):
+        """concatenate another NFA `nfa` to self."""
         self.unit_end_state()
         self.arrange_state(0)
-        nfa.arrange_state(len(self.q))
+        nfa.arrange_state(len(self.states))
 
-        for q, t in nfa.function.items():
-            for c, qs in t.items():
-                self.add_transfer(q, c, qs)
+        self.states.extend(nfa.states)
+        for q, c, nextq in nfa.transfer_list():
+            self.add_transfer(q, c, nextq)
+
+        # now self only have one end state
         self.add_transfer(self.end[0], ..., nfa.start)
         self.end = nfa.end[:]
+
+    def alternate(self, nfa):
+        self.unit_end_state()
+        nfa.unit_end_state()
+        self.arrange_state(0)
+        nfa.arrange_state(len(self.states))
+
+        start = len(self.states) + len(nfa.states)
+        end = len(self.states) + len(nfa.states) + 1
+
+        self.states.extend([start, end])
+        self.states.extend(nfa.states)
+        for q, c, nextq in nfa.transfer_list():
+            self.add_transfer(q, c, nextq)
+        self.add_transfer(start, ..., self.start)
+        self.add_transfer(start, ..., nfa.start)
+        self.add_transfer(self.end[0], ..., end)
+        self.add_transfer(nfa.end[0], ..., end)
+        self.start = start
+        self.end = [end]
 
 
 def test_nfa():
@@ -274,7 +306,7 @@ def test_unit_end_state():
     nfa = NFA(C, Q, F, S, E)
     nfa.unit_end_state()
     assert len(nfa.end) == 1
-    assert len(nfa.q) == 5
+    assert len(nfa.states) == 5
 
     C = '01'
     Q = [0, 1]
@@ -290,7 +322,7 @@ def test_unit_end_state():
     nfa.unit_end_state()
     assert nfa.start == 0
     assert nfa.end == [1]
-    assert nfa.q == [0, 1]
+    assert nfa.states == [0, 1]
 
 
 def test_rename_state():
@@ -354,7 +386,7 @@ def test_arrange_state():
 
     nfa = NFA(C, Q, F, S, E)
     nfa.arrange_state()
-    assert sorted(nfa.q) == [0, 1, 2]
+    assert sorted(nfa.states) == [0, 1, 2]
     assert nfa.start == 0
     assert sorted(nfa.end) == [1, 2]
     assert nfa.function == {
@@ -380,7 +412,7 @@ def test_arrange_state():
     E = [1]
     nfa = NFA(C, Q, F, S, E)
     nfa.arrange_state(1)
-    assert sorted(nfa.q) == [1, 2]
+    assert sorted(nfa.states) == [1, 2]
     assert nfa.start == 1
     assert sorted(nfa.end) == [2]
     assert nfa.function == {
@@ -391,7 +423,7 @@ def test_arrange_state():
     }
 
 
-def test_append():
+def test_concatenate():
     C = '01'
     Q = [0, 1]
     F = {
@@ -414,7 +446,7 @@ def test_append():
     E = [1]
     nfa2 = NFA(C, Q, F, S, E)
 
-    nfa1.append(nfa2)
+    nfa1.concatenate(nfa2)
     assert nfa1.run('01') is True
 
 
@@ -473,11 +505,46 @@ def test_kleene_closure():
     assert nfa.run('1010') is True
 
 
+def test_alternate():
+    C = '01'
+    Q = [0, 1]
+    F = {
+        0: {
+            '0': [1]
+        }
+    }
+    S = 0
+    E = [1]
+    nfa1 = NFA(C, Q, F, S, E)
+
+    C = '01'
+    Q = [0, 1]
+    F = {
+        0: {
+            '1': [1]
+        }
+    }
+    S = 0
+    E = [1]
+    nfa2 = NFA(C, Q, F, S, E)
+
+    # 0*
+    nfa1.kleene_closure()
+    # 1*
+    nfa2.kleene_closure()
+
+    # 0*|1*
+    nfa1.alternate(nfa2)
+    assert nfa1.run('1111') is True
+    assert nfa1.run('0000') is True
+
+
 if __name__ == '__main__':
-    test_nfa()
     test_e_closure()
     test_kleene_closure()
     test_unit_end_state()
     test_rename_state()
     test_arrange_state()
-    test_append()
+    test_concatenate()
+    test_nfa()
+    test_alternate()
