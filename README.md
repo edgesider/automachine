@@ -1,14 +1,13 @@
 # Automachine
 
-Implementation of several automachine.
-
-- DFA
-- NFA
+Implementation of several automata machine.
 
 # TODO
 
-- Regular expression
+- [x] DFA
+- [x] NFA
+- [x] Regular expression
 - DFA minimize
 - NFA to .gv file
-- Pushdown automachine
-- Turing automachine
+- Pushdown automata
+- Turing automata
