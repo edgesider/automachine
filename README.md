@@ -7,7 +7,7 @@ Implementation of several automata machine.
 - [x] DFA
 - [x] NFA
 - [x] Regular expression
-- DFA minimize
-- NFA to .gv file
-- Pushdown automata
-- Turing automata
+- [ ] DFA minimize
+- [ ] NFA to .gv file
+- [ ] Pushdown automata
+- [ ] Turing automata
